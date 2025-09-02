@@ -1,0 +1,301 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {
+        "fieldsToSummarize": {
+          "values": [
+            {
+              "aggregation": "sum",
+              "field": "Calories"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.summarize",
+      "typeVersion": 1.1,
+      "position": [
+        960,
+        176
+      ],
+      "id": "",
+      "name": "Summarize"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "",
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "/start",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -368,
+        192
+      ],
+      "id": "",
+      "name": "True = /start1"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "=Alright, Post your food pic, I’ll count the calories for you",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "",
+      "name": "Intro message2",
+      "webhookId": "",
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.photo[0].file_id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        368
+      ],
+      "id": "",
+      "name": "Download The Photo",
+      "webhookId": "",
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "text": "=You are a nutrition expert using only visual analysis to estimate calories and fat content from a single meal photo. Follow these steps:\n\n1. Identify every distinct food item.\n\n2. Provide an estimate of the calories for each item.\n\n3. Provide an estimate of the fat content (in grams) for each item.\n\n4. Provide a total estimated calorie count and total fat content for the entire meal.\n\n5. Do not include any information other than the calorie and fat estimates.",
+        "inputType": "binary",
+        "options": {}
+      },
+      "id": "",
+      "name": "Analysis The Photo Deeply",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        384,
+        176
+      ],
+      "retryOnFail": true,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "",
+              "name": "Date",
+              "value": "={{ $now.toFormat('dd-MM-yyyy') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        176
+      ],
+      "id": "",
+      "name": "Current Date"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Track Calories').item.json.message.chat.id }}",
+        "text": "=Hello! I've taken a good look at your meal.\n\nHere is the nutritional breakdown I found:\n\n{{ $('Analysis The Photo Deeply').item.json.content.parts[0].text }}\n",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1296,
+        176
+      ],
+      "id": "",
+      "name": "Output2",
+      "webhookId": "",
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": "Telegram account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -688,
+        192
+      ],
+      "id": "",
+      "name": "Track Calories",
+      "webhookId": "",
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Summarize": {
+      "main": [
+        [
+          {
+            "node": "Output2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "True = /start1": {
+      "main": [
+        [
+          {
+            "node": "Intro message2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Download The Photo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download The Photo": {
+      "main": [
+        [
+          {
+            "node": "Analysis The Photo Deeply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analysis The Photo Deeply": {
+      "main": [
+        [
+          {
+            "node": "Current Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Current Date": {
+      "main": [
+        [
+          {
+            "node": "Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Track Calories": {
+      "main": [
+        [
+          {
+            "node": "True = /start1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "15ed6e2e-645b-4b68-a23c-5efdcef1f254",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1e5f904a4856021b1e3a1e7f913fded228ea3ff950a174584de66c6ce8a70742"
+  },
+  "id": "",
+  "tags": [
+    {
+      "createdAt": "2025-08-23T06:24:49.045Z",
+      "updatedAt": "2025-08-23T06:24:49.045Z",
+      "id": "5bDzeyzPj4SViukD",
+      "name": "telegramBot"
+    }
+  ]
+}
